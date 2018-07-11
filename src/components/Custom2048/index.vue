@@ -16,10 +16,13 @@ const KEYDOWN = {
   RIGHT: 39,
   DOWN: 40
 }
+
 export default {
   data () {
     return {
-      grids: null
+      emptyGrids: null,
+      grids: null,
+      listener: getListener.call(this)
     }
   },
   methods: {
@@ -27,30 +30,49 @@ export default {
       this.$nextTick(() => {
         let canvas = this.$refs.tiles
         let ctx = canvas.getContext('2d')
-        // 监听鼠标滑动方向
-        this.listeningTouchDirection()
+        // 清除tiles
+        ctx.clearRect(0, 0, 300, 300)
+        // 初始化grids数组
+        this.grids = JSON.parse(JSON.stringify(this.emptyGrids))
 
+        // 取消事件监听
+        this.eventListenerSwitch('off')
+        // 添加监听事件
+        this.eventListenerSwitch()
+
+        // 随机生成数字
         this.generateGridNumber(ctx)
         this.generateGridNumber(ctx)
-        this.$on('movingtiles', this.moving)
       })
     },
     initChessBoard () {
-      let chessBoard = this.$refs.chessBoard
-      let ctx = chessBoard.getContext('2d')
-      ctx.fillStyle = '#bbada0'
-      ctx.fillRect(0, 0, 300, 300)
-      let grids = []
+      this.$nextTick(() => {
+        let chessBoard = this.$refs.chessBoard
+        let ctx = chessBoard.getContext('2d')
+        ctx.fillStyle = '#bbada0'
+        ctx.fillRect(0, 0, 300, 300)
+        let grids = []
 
-      for (let i = 0; i < ROW; i++) {
-        grids[i] = []
-        for (let j = 0; j < COL; j++) {
-          grids[i][j] = undefined
-          let rect = this.getBoundingClientRect(i, j)
-          this.drawRoundingRect({ctx, rect})
+        for (let i = 0; i < ROW; i++) {
+          grids[i] = []
+          for (let j = 0; j < COL; j++) {
+            grids[i][j] = null
+            let rect = this.getBoundingClientRect(i, j)
+            this.drawRoundingRect({ctx, rect})
+          }
         }
-      }
-      this.grids = grids
+        this.emptyGrids = grids
+      })
+    },
+    drawGameover (ctx) {
+      let gameoverText = '游戏结束'
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'
+      ctx.fillRect(0, 0, 300, 300)
+      ctx.fillStyle = 'white'
+      ctx.font = 'Microsoft YaHei bold 60px'
+      let text = ctx.measureText(gameoverText)
+      ctx.fillText(gameoverText, 150 - text.width / 2, 150)
+      this.eventListenerSwitch('off')
     },
     drawRoundingRect (options) {
       // 圆角矩形...
@@ -77,7 +99,7 @@ export default {
 
       // draw text
       ctx.fillStyle = color
-      ctx.font = `bold ${fontSize}px 微软雅黑`
+      ctx.font = `bold ${fontSize}px Microsoft YaHei`
       let text = ctx.measureText(val)
       let x = rect.left + (rect.right - rect.left) / 2 - text.width / 2
       let y = rect.bottom - (rect.bottom - rect.top) / 2 + fontSize / 3
@@ -85,18 +107,21 @@ export default {
     },
     generateGridNumber (ctx) {
       if (this.nospace()) {
+        this.drawGameover(ctx)
         return
       }
       while (true) {
         let row = Math.floor(Math.random() * ROW)
         let col = Math.floor(Math.random() * COL)
-        if (this.grids[row][col] === undefined) {
+        if (this.grids[row][col] === null) {
           let val = Math.ceil(Math.random() * 2) * 2
           this.grids[row][col] = {
             rect: this.getBoundingClientRect(row, col),
             val
           }
           this.drawGridNumber(ctx, this.grids[row][col])
+
+          this.$emit('changescore', val)
           break
         }
       }
@@ -168,62 +193,24 @@ export default {
     nospace () {
       for (let i = 0; i < ROW; i++) {
         for (let j = 0; j < COL; j++) {
-          if (this.grids[i][j] === undefined) {
+          if (this.grids[i][j] === null) {
             return false
           }
         }
       }
       return true
     },
-    listeningTouchDirection () {
-      let startX = null
-      let startY = null
-      let canvas = this.$refs.tiles
-      let that = this
-      let direction = null
-      canvas.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].pageX
-        startY = e.touches[0].pageY
-      })
-      canvas.addEventListener('touchend', (e) => {
-        let endX = e.changedTouches[0].pageX
-        let endY = e.changedTouches[0].pageY
-        let horizontal = endX - startX
-        let vertical = endY - startY
-        // 当touchend坐标偏移小于5像素时，不触发movingtiles事件。
-        if (Math.abs(horizontal) <= 5 && Math.abs(vertical) <= 5) {
-          return
-        }
-        if (Math.abs(horizontal) > Math.abs(vertical)) {
-          if (horizontal > 0) {
-            direction = 'RIGHT'
-          } else if (horizontal < 0) {
-            direction = 'LEFT'
-          }
-        } else if (Math.abs(horizontal) < Math.abs(vertical)) {
-          if (vertical > 0) {
-            direction = 'DOWN'
-          } else if (vertical < 0) {
-            direction = 'UP'
-          }
-        }
-        that.$emit('movingtiles', direction)
-      })
-
-      document.addEventListener('keydown', (e) => {
-        switch (e.keyCode) {
-          case KEYDOWN.UP:
-            that.$emit('movingtiles', 'UP')
-            break
-          case KEYDOWN.RIGHT:
-            that.$emit('movingtiles', 'RIGHT')
-            break
-          case KEYDOWN.DOWN:
-            that.$emit('movingtiles', 'DOWN')
-            break
-          case KEYDOWN.LEFT:
-            that.$emit('movingtiles', 'LEFT')
-            break
+    eventListenerSwitch (sw = 'on') {
+      this.$nextTick(() => {
+        let canvas = this.$refs.tiles
+        if (sw === 'on') {
+          canvas.addEventListener('touchstart', this.listener.touchstart, false)
+          canvas.addEventListener('touchend', this.listener.touchend, false)
+          document.addEventListener('keydown', this.listener.keydown, false)
+        } else {
+          canvas.removeEventListener('touchstart', this.listener.touchstart, false)
+          canvas.removeEventListener('touchend', this.listener.touchend, false)
+          document.removeEventListener('keydown', this.listener.keydown, false)
         }
       })
     },
@@ -327,13 +314,13 @@ export default {
         if (this.grids[i][j]) {
           if (this.grids[i][j].val === currentTile.val) {
             currentTile.val = currentTile.val * 2
-            this.grids[i][j] = undefined
+            this.grids[i][j] = null
           }
           isMerge = true
         }
       } else if (this.grids[i][j]) {
         currentTile = this.grids[i][j]
-        this.grids[i][j] = undefined
+        this.grids[i][j] = null
       }
       if (currentTile) {
         this.grids[row][col] = {
@@ -348,11 +335,66 @@ export default {
     }
   },
   mounted () {
-    this.$nextTick(() => {
-      // 初始化棋盘
-      this.initChessBoard()
-      this.start()
-    })
+    this.initChessBoard()
+    this.$on('movingtiles', this.moving)
+
+    // 开始游戏
+    this.start()
+  }
+}
+
+function getListener () {
+  let startX, startY
+  return {
+    touchstart: (e) => {
+      // 防止滑动时，移动端页面上下抖动
+      e.preventDefault()
+      startX = e.touches[0].pageX
+      startY = e.touches[0].pageY
+    },
+    touchend: (e) => {
+      e.preventDefault()
+
+      let direction = null
+      let endX = e.changedTouches[0].pageX
+      let endY = e.changedTouches[0].pageY
+      let horizontal = endX - startX
+      let vertical = endY - startY
+      // 当touchend坐标偏移小于5像素时，不触发movingtiles事件。
+      if (Math.abs(horizontal) <= 5 && Math.abs(vertical) <= 5) {
+        return
+      }
+      if (Math.abs(horizontal) > Math.abs(vertical)) {
+        if (horizontal > 0) {
+          direction = 'RIGHT'
+        } else if (horizontal < 0) {
+          direction = 'LEFT'
+        }
+      } else if (Math.abs(horizontal) < Math.abs(vertical)) {
+        if (vertical > 0) {
+          direction = 'DOWN'
+        } else if (vertical < 0) {
+          direction = 'UP'
+        }
+      }
+      this.$emit('movingtiles', direction)
+    },
+    keydown: (e) => {
+      switch (e.keyCode) {
+        case KEYDOWN.UP:
+          this.$emit('movingtiles', 'UP')
+          break
+        case KEYDOWN.RIGHT:
+          this.$emit('movingtiles', 'RIGHT')
+          break
+        case KEYDOWN.DOWN:
+          this.$emit('movingtiles', 'DOWN')
+          break
+        case KEYDOWN.LEFT:
+          this.$emit('movingtiles', 'LEFT')
+          break
+      }
+    }
   }
 }
 </script>
