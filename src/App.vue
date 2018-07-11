@@ -91,6 +91,9 @@ export default {
       }
     }
     .restart {
+      width: 134px;
+      height: 36px;
+      line-height: 36px;
       background-color: #d4430f;
       &:active {
         opacity: 0.8;
