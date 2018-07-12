@@ -1,18 +1,17 @@
 <template>
   <div class="Custom2048">
-    <canvas ref="chessBoard" width="300px" height="300px"></canvas>
-    <canvas ref="tiles" width="300px" height="300px"></canvas>
+    <canvas ref="chessBoard" width="360" height="360"></canvas>
+    <canvas ref="tiles" width="360" height="360"></canvas>
   </div>
 </template>
 <script>
+
 const ROW = 4
 const COL = 4
-const BORDER_WIDTH = 12
-const CELL_WIDTH = 60
 
 /*
  *  待解决：  1、没有检查canMoving
- *            2、移动端像素比
+ *            2、移动端像素比(√)
  *            3、动画效果
  *            4、...
  *
@@ -22,16 +21,19 @@ export default {
     return {
       emptyGrids: null,
       grids: null,
-      listener: getListener.call(this)
+      listener: getListener.call(this),
+      canvasRealSize: null
     }
   },
   methods: {
     start () {
       this.$nextTick(() => {
+        let {REAL_WIDTH} = this.canvasRealSize
         let canvas = this.$refs.tiles
         let ctx = canvas.getContext('2d')
+
         // 清除tiles
-        ctx.clearRect(0, 0, 300, 300)
+        ctx.clearRect(0, 0, REAL_WIDTH, REAL_WIDTH)
         // 初始化grids数组
         this.grids = JSON.parse(JSON.stringify(this.emptyGrids))
 
@@ -47,10 +49,12 @@ export default {
     },
     initChessBoard () {
       this.$nextTick(() => {
+        let {REAL_WIDTH} = this.canvasRealSize
         let chessBoard = this.$refs.chessBoard
         let ctx = chessBoard.getContext('2d')
+
         ctx.fillStyle = '#bbada0'
-        ctx.fillRect(0, 0, 300, 300)
+        ctx.fillRect(0, 0, REAL_WIDTH, REAL_WIDTH)
         let grids = []
 
         for (let i = 0; i < ROW; i++) {
@@ -65,11 +69,12 @@ export default {
       })
     },
     drawGameover (ctx) {
+      let {REAL_WIDTH, RATIO} = this.canvasRealSize
       let gameoverText = '游戏结束'
       ctx.fillStyle = 'rgba(0,0,0,0.6)'
-      ctx.fillRect(0, 0, 300, 300)
+      ctx.fillRect(0, 0, REAL_WIDTH, REAL_WIDTH)
       ctx.fillStyle = 'white'
-      ctx.font = 'Microsoft YaHei bold 60px'
+      ctx.font = `Microsoft YaHei bold ${60 * RATIO}px`
       let text = ctx.measureText(gameoverText)
       ctx.fillText(gameoverText, 150 - text.width / 2, 150)
       this.eventListenerSwitch('off')
@@ -96,7 +101,7 @@ export default {
       let {backgroundColor, color, fontSize} = this.getNumberStyle(val)
 
       this.drawRoundingRect({ctx, rect, fillStyle: backgroundColor})
-
+      fontSize = fontSize * this.canvasRealSize.RATIO
       // draw text
       ctx.fillStyle = color
       ctx.font = `bold ${fontSize}px Microsoft YaHei`
@@ -127,6 +132,7 @@ export default {
       }
     },
     getBoundingClientRect (row, col) {
+      let {BORDER_WIDTH, CELL_WIDTH} = this.canvasRealSize
       let left = (row + 1) * BORDER_WIDTH + CELL_WIDTH * row
       let top = (col + 1) * BORDER_WIDTH + CELL_WIDTH * col
       return {
@@ -215,6 +221,7 @@ export default {
       })
     },
     moving (direction) {
+      let {REAL_WIDTH} = this.canvasRealSize
       let ctx = this.$refs.tiles.getContext('2d')
       if (direction === 'RIGHT') {
         this.moveRight()
@@ -226,7 +233,7 @@ export default {
         this.moveDown()
       }
 
-      ctx.clearRect(0, 0, 300, 300)
+      ctx.clearRect(0, 0, REAL_WIDTH, REAL_WIDTH)
       for (let i = 0; i < ROW; i++) {
         for (let j = 0; j < COL; j++) {
           if (this.grids[i][j]) {
@@ -332,9 +339,50 @@ export default {
         return true
       }
       return currentTile
+    },
+    initCanvasSize () {
+      this.$nextTick(() => {
+        let tiles = this.$refs.tiles
+        let chessBoard = this.$refs.chessBoard
+
+        let width = tiles.width
+        let RATIO = (() => {
+          let ctx = tiles.getContext('2d')
+          let dpr = window.devicePixelRatio || 1
+          let bsr = ctx.webkitBackingStorePixelRatio ||
+                    ctx.mozBackingStorePixelRatio ||
+                    ctx.msBackingStorePixelRatio ||
+                    ctx.oBackingStorePixelRatio ||
+                    ctx.backingStorePixelRatio || 1
+          return dpr / bsr
+        })()
+        let REAL_WIDTH = width * RATIO
+        let BORDER_WIDTH = REAL_WIDTH / 5 / 5
+        let CELL_WIDTH = REAL_WIDTH / 5
+
+        // 初始化$tiles的大小
+        tiles.width = REAL_WIDTH
+        tiles.height = REAL_WIDTH
+        tiles.style.width = width + 'px'
+        tiles.style.height = width + 'px'
+
+        // 初始化$chessBoard的大小
+        chessBoard.width = REAL_WIDTH
+        chessBoard.height = REAL_WIDTH
+        chessBoard.style.width = width + 'px'
+        chessBoard.style.height = width + 'px'
+
+        this.canvasRealSize = {
+          REAL_WIDTH,
+          BORDER_WIDTH,
+          CELL_WIDTH,
+          RATIO
+        }
+      })
     }
   },
   mounted () {
+    this.initCanvasSize()
     this.initChessBoard()
     this.$on('movingtiles', this.moving)
 
