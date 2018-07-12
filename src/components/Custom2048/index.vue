@@ -10,13 +10,13 @@ const COL = 4
 const BORDER_WIDTH = 12
 const CELL_WIDTH = 60
 
-const KEYDOWN = {
-  LEFT: 37,
-  UP: 38,
-  RIGHT: 39,
-  DOWN: 40
-}
-
+/*
+ *  待解决：  1、没有检查canMoving
+ *            2、移动端像素比
+ *            3、动画效果
+ *            4、...
+ *
+ */
 export default {
   data () {
     return {
@@ -344,6 +344,12 @@ export default {
 }
 
 function getListener () {
+  const KEYDOWN = {
+    LEFT: 37,
+    UP: 38,
+    RIGHT: 39,
+    DOWN: 40
+  }
   let startX, startY
   return {
     touchstart: (e) => {
