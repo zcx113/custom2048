@@ -22,7 +22,8 @@ export default {
       emptyGrids: null,
       grids: null,
       listener: getListener.call(this),
-      canvasRealSize: null
+      canvasRealSize: null,
+      moveable: false
     }
   },
   methods: {
@@ -76,7 +77,7 @@ export default {
       ctx.fillStyle = 'white'
       ctx.font = `Microsoft YaHei bold ${60 * RATIO}px`
       let text = ctx.measureText(gameoverText)
-      ctx.fillText(gameoverText, 150 - text.width / 2, 150)
+      ctx.fillText(gameoverText, REAL_WIDTH / 2 - text.width * RATIO / 2, REAL_WIDTH / 2)
       this.eventListenerSwitch('off')
     },
     drawRoundingRect (options) {
@@ -223,6 +224,8 @@ export default {
     moving (direction) {
       let {REAL_WIDTH} = this.canvasRealSize
       let ctx = this.$refs.tiles.getContext('2d')
+
+      this.moveable = false
       if (direction === 'RIGHT') {
         this.moveRight()
       } else if (direction === 'LEFT') {
@@ -233,18 +236,21 @@ export default {
         this.moveDown()
       }
 
-      ctx.clearRect(0, 0, REAL_WIDTH, REAL_WIDTH)
-      for (let i = 0; i < ROW; i++) {
-        for (let j = 0; j < COL; j++) {
-          if (this.grids[i][j]) {
-            this.drawGridNumber(ctx, this.grids[i][j])
+      if (this.moveable) {
+        ctx.clearRect(0, 0, REAL_WIDTH, REAL_WIDTH)
+        for (let i = 0; i < ROW; i++) {
+          for (let j = 0; j < COL; j++) {
+            if (this.grids[i][j]) {
+              this.drawGridNumber(ctx, this.grids[i][j])
+            }
           }
         }
+        setTimeout(() => {
+          this.generateGridNumber(ctx)
+        }, 200)
       }
-      setTimeout(() => {
-        this.generateGridNumber(ctx)
-      }, 200)
     },
+
     moveLeft () {
       for (let i = 0; i < ROW; i++) {
         for (let j = 0; j < COL; j++) {
@@ -322,10 +328,12 @@ export default {
           if (this.grids[i][j].val === currentTile.val) {
             currentTile.val = currentTile.val * 2
             this.grids[i][j] = null
+            this.moveable = true
           }
           isMerge = true
         }
       } else if (this.grids[i][j]) {
+        this.moveable = true
         currentTile = this.grids[i][j]
         this.grids[i][j] = null
       }
