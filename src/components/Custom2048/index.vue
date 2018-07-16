@@ -10,7 +10,7 @@ const ROW = 4
 const COL = 4
 
 /*
- *  待解决：  1、没有检查canMoving
+ *  待解决：  1、没有检查canMoving(√)
  *            2、移动端像素比(√)
  *            3、动画效果
  *            4、...
@@ -77,7 +77,7 @@ export default {
       ctx.fillStyle = 'white'
       ctx.font = `Microsoft YaHei bold ${60 * RATIO}px`
       let text = ctx.measureText(gameoverText)
-      ctx.fillText(gameoverText, REAL_WIDTH / 2 - text.width * RATIO / 2, REAL_WIDTH / 2)
+      ctx.fillText(gameoverText, REAL_WIDTH / 2 - text.width / 2, REAL_WIDTH / 2)
       this.eventListenerSwitch('off')
     },
     drawRoundingRect (options) {
@@ -112,10 +112,6 @@ export default {
       ctx.fillText(grid.val, x, y)
     },
     generateGridNumber (ctx) {
-      if (this.nospace()) {
-        this.drawGameover(ctx)
-        return
-      }
       while (true) {
         let row = Math.floor(Math.random() * ROW)
         let col = Math.floor(Math.random() * COL)
@@ -224,6 +220,11 @@ export default {
     moving (direction) {
       let {REAL_WIDTH} = this.canvasRealSize
       let ctx = this.$refs.tiles.getContext('2d')
+
+      if (this.nospace()) {
+        this.drawGameover(ctx)
+        return
+      }
 
       this.moveable = false
       if (direction === 'RIGHT') {
@@ -398,7 +399,6 @@ export default {
     this.start()
   }
 }
-
 function getListener () {
   const KEYDOWN = {
     LEFT: 37,
