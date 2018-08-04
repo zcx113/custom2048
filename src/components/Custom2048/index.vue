@@ -112,19 +112,35 @@ export default {
       ctx.fillText(grid.val, x, y)
     },
     generateGridNumber (ctx) {
-      while (true) {
+      let count = 0
+      let maxCount = 100
+      let generate = (row, col) => {
+        let val = Math.ceil(Math.random() * 2) * 2
+        this.grids[row][col] = {
+          rect: this.getBoundingClientRect(row, col),
+          val
+        }
+        this.drawGridNumber(ctx, this.grids[row][col])
+
+        this.$emit('changescore', val)
+      }
+      while (count < maxCount) {
         let row = Math.floor(Math.random() * ROW)
         let col = Math.floor(Math.random() * COL)
         if (this.grids[row][col] === null) {
-          let val = Math.ceil(Math.random() * 2) * 2
-          this.grids[row][col] = {
-            rect: this.getBoundingClientRect(row, col),
-            val
-          }
-          this.drawGridNumber(ctx, this.grids[row][col])
-
-          this.$emit('changescore', val)
+          generate(row, col)
           break
+        }
+        count++
+      }
+      if (count === maxCount) {
+        for (let i = 0; i < ROW; i++) {
+          for (let j = 0; j < COL; j++) {
+            if (this.grids[i][j] === null) {
+              generate(i, j)
+              break
+            }
+          }
         }
       }
     },
@@ -203,6 +219,20 @@ export default {
       }
       return true
     },
+    nomoving () {
+      for (let i = 0; i < ROW; i++) {
+        for (let j = 0; j < COL; j++) {
+          let grid = this.grids[i][j]
+          if ((i + 1) < ROW && grid.val === this.grids[i + 1][j].val) {
+            return false
+          }
+          if ((j + 1) < COL && grid.val === this.grids[i][j + 1].val) {
+            return false
+          }
+        }
+      }
+      return true
+    },
     eventListenerSwitch (sw = 'on') {
       this.$nextTick(() => {
         let canvas = this.$refs.tiles
@@ -220,11 +250,6 @@ export default {
     moving (direction) {
       let {REAL_WIDTH} = this.canvasRealSize
       let ctx = this.$refs.tiles.getContext('2d')
-
-      if (this.nospace()) {
-        this.drawGameover(ctx)
-        return
-      }
 
       this.moveable = false
       if (direction === 'RIGHT') {
@@ -249,6 +274,11 @@ export default {
         setTimeout(() => {
           this.generateGridNumber(ctx)
         }, 200)
+      }
+      if (this.moveable === false) {
+        if (this.nospace() && this.nomoving()) {
+          this.drawGameover(ctx)
+        }
       }
     },
 

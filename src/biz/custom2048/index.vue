@@ -95,6 +95,7 @@ export default {
       height: 36px;
       line-height: 36px;
       background-color: #d4430f;
+      cursor: pointer;
       &:active {
         opacity: 0.8;
       }
